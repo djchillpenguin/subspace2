@@ -61,8 +61,8 @@ var BattleScene = new Phaser.Class({
             self.otherPlayers.getChildren().forEach(function (otherPlayer) {
                 if (playerInfo.playerId === otherPlayer.playerId) {
                     otherPlayer.setRotation(playerInfo.rotation);
-                    otherPlayer.setVelocityX(playerInfo.velX);
-                    otherPlayer.setVelocityY(playerInfo.velY);
+                    otherPlayer.body.setVelocityX(playerInfo.velX);
+                    otherPlayer.body.setVelocityY(playerInfo.velY);
                 }
             });
         });
@@ -103,7 +103,7 @@ var BattleScene = new Phaser.Class({
         var velY = ship.velocityY;
         var r = ship.rotation;
 
-        if (ship.oldPosition && (velX !== ship.velocityX || y !== ship.velocityY || r !== ship.oldPosition.rotation)) {
+        if (ship.oldPosition && (velX !== ship.velocityX || velY !== ship.velocityY || r !== ship.oldPosition.rotation)) {
             this.socket.emit('playerMovement', { velX: ship.velocityX, velY: ship.velocityY, rotation: ship.rotation });
         }
 
