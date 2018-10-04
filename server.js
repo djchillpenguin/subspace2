@@ -33,8 +33,8 @@ io.on('connection', function (socket) {
     });
 
     socket.on('playerMovement', function (movementData) {
-        players[socket.id].x = movementData.x;
-        players[socket.id].y = movementData.y;
+        players[socket.id].velX = movementData.velX;
+        players[socket.id].velY = movementData.velY;
         players[socket.id].rotation = movementData.rotation;
 
         socket.broadcast.emit('playerMoved', players[socket.id]);
