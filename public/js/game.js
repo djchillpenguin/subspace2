@@ -79,7 +79,8 @@ var BattleScene = new Phaser.Class({
             self.otherPlayers.getChildren().forEach(function (otherPlayer) {
                 if (playerInfo.playerId === otherPlayer.playerId) {
                     otherPlayer.setRotation(playerInfo.rotation);
-                    //otherPlayer.body.setVelocity(playerInfo.vel);
+                    otherPlayer.setVelocityX(playerInfo.vel.x);
+                    otherPlayer.setVelocityY(playerInfo.vel.y);
                     otherPlayer.x = playerInfo.x;
                     otherPlayer.y = playerInfo.y;
                     console.log('ship movement updated');
