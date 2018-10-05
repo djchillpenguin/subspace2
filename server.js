@@ -34,8 +34,8 @@ io.on('connection', function (socket) {
     });
 
     socket.on('playerMovement', function (movementData) {
-        players[socket.id].x = movementData.pos.x;
-        players[socket.id].y = movementData.pos.y;
+        players[socket.id].x = movementData.x;
+        players[socket.id].y = movementData.y;
         players[socket.id].vel = movementData.vel;
         players[socket.id].rotation = movementData.rotation;
         console.log(players);

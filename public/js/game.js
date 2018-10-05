@@ -79,9 +79,9 @@ var BattleScene = new Phaser.Class({
             self.otherPlayers.getChildren().forEach(function (otherPlayer) {
                 if (playerInfo.playerId === otherPlayer.playerId) {
                     otherPlayer.setRotation(playerInfo.rotation);
-                    otherPlayer.body.setVelocity(playerInfo.vel);
-                    otherPlayer.body.position.x = playerInfo.x;
-                    otherPlayer.body.position.y = playerInfo.y;
+                    //otherPlayer.body.setVelocity(playerInfo.vel);
+                    otherPlayer.x = playerInfo.x;
+                    otherPlayer.y = playerInfo.y;
                     console.log('ship movement updated');
                 }
             });
@@ -92,8 +92,8 @@ var BattleScene = new Phaser.Class({
         camera = this.cameras.main;
         camera.startFollow(ship);
         this.physics.add.collider(ship, structureLayer);
+        this.physics.add.collider(this.otherPlayers, structureLayer);
         ship.setBounce(.75);
-
     },
 
     update: function (time, delta)
@@ -119,14 +119,14 @@ var BattleScene = new Phaser.Class({
             ship.setAcceleration(0);
         }
 
-        x = ship.body.x;
-        y = ship.body.y;
+        var x = ship.x;
+        var y = ship.y;
         var r = ship.rotation;
 
         if (ship.oldPosition && (x !== ship.oldPosition.x || y !== ship.oldPosition.y || r !== ship.oldPosition.rotation)) {
             console.log('velocity or rotation changed');
             console.log(ship.body.velocity);
-            this.socket.emit('playerMovement', { pos: ship.body.position, vel: ship.body.velocity, rotation: ship.rotation });
+            this.socket.emit('playerMovement', { x: ship.x, y: ship.y, vel: ship.body.velocity, rotation: ship.rotation });
         }
 
         ship.oldPosition = {
@@ -149,7 +149,7 @@ var config = {
         default: 'arcade',
         arcade: {
             gravity: { y: 0 },
-            debug: false,
+            debug: true,
             fps: 60
         }
     },
