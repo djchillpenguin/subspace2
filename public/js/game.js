@@ -1,3 +1,17 @@
+let ship;
+
+var Ship = new Phaser.Class ({
+
+    Extends: Phaser.Physics.Arcade.Sprite,
+
+    initialize:
+
+    function Ship (scene)
+    {
+        Phaser.Physics.Arcade.Sprite.call(this, scene, 0, 0, 'ship');
+    }
+});
+
 var BattleScene = new Phaser.Class({
 
     Extends: Phaser.Scene,
@@ -7,8 +21,9 @@ var BattleScene = new Phaser.Class({
     function BattleScene ()
     {
         Phaser.Scene.call(this, { key: 'BattleScene' });
-        let ship;
     },
+
+
 
     preload: function ()
     {
@@ -19,21 +34,24 @@ var BattleScene = new Phaser.Class({
 
     create: function ()
     {
+        //create player ship
+        ship = this.physics.add.sprite(800, 800, 'ship');
+        ship.setScale(2);
+        ship.setMaxVelocity(500);
+        ship.setDepth(10);
+
         //create map
         map = this.make.tilemap({ key: 'map' });
         const tileset = map.addTilesetImage('spaceTiles', 'tiles');
         const spaceLayer = map.createStaticLayer('space', tileset, 0, 0).setScale(4);
         const structureLayer = map.createStaticLayer('structure', tileset, 0, 0).setScale(4);
-        structureLayer.setDepth(10);
 
         structureLayer.setCollisionByProperty({ collides: true });
-
-        ship = this.physics.add.sprite(800, 800, 'ship').setScale(2);
-        ship.setMaxVelocity(500);
 
         var self = this;
         this.socket = io();
         this.otherPlayers = this.physics.add.group();
+
         this.socket.on('currentPlayers', function (players) {
             Object.keys(players).forEach(function (id) {
                 if (players[id].playerId === self.socket.id) {
@@ -61,8 +79,10 @@ var BattleScene = new Phaser.Class({
             self.otherPlayers.getChildren().forEach(function (otherPlayer) {
                 if (playerInfo.playerId === otherPlayer.playerId) {
                     otherPlayer.setRotation(playerInfo.rotation);
-                    otherPlayer.body.setVelocityX(playerInfo.velX);
-                    otherPlayer.body.setVelocityY(playerInfo.velY);
+                    otherPlayer.body.setVelocity(playerInfo.vel);
+                    otherPlayer.body.position.x = playerInfo.x;
+                    otherPlayer.body.position.y = playerInfo.y;
+                    console.log('ship movement updated');
                 }
             });
         });
@@ -99,17 +119,19 @@ var BattleScene = new Phaser.Class({
             ship.setAcceleration(0);
         }
 
-        var velX = ship.velocityX;
-        var velY = ship.velocityY;
+        x = ship.body.x;
+        y = ship.body.y;
         var r = ship.rotation;
 
-        if (ship.oldPosition && (velX !== ship.velocityX || velY !== ship.velocityY || r !== ship.oldPosition.rotation)) {
-            this.socket.emit('playerMovement', { velX: ship.velocityX, velY: ship.velocityY, rotation: ship.rotation });
+        if (ship.oldPosition && (x !== ship.oldPosition.x || y !== ship.oldPosition.y || r !== ship.oldPosition.rotation)) {
+            console.log('velocity or rotation changed');
+            console.log(ship.body.velocity);
+            this.socket.emit('playerMovement', { pos: ship.body.position, vel: ship.body.velocity, rotation: ship.rotation });
         }
 
         ship.oldPosition = {
-            velX: ship.velocityX,
-            velY: ship.velocityY,
+            x: ship.x,
+            y: ship.y,
             rotation: ship.rotation
         };
     }
@@ -155,7 +177,8 @@ function addPlayer (self, playerInfo)
 
 function addOtherPlayers (self, playerInfo)
 {
-    const otherPlayer = self.add.sprite(playerInfo.x, playerInfo.y, 'ship').setScale(2);
+    const otherPlayer = self.physics.add.sprite(playerInfo.x, playerInfo.y, 'ship').setScale(2);
+    otherPlayer.setDepth(10);
 
     if (playerInfo.team === 'blue') {
         otherPlayer.setTint(0x0000ff);
@@ -164,5 +187,6 @@ function addOtherPlayers (self, playerInfo)
         otherPlayer.setTint(0xff0000);
     }
     otherPlayer.playerId = playerInfo.playerId;
+
     self.otherPlayers.add(otherPlayer);
 }

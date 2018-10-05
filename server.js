@@ -14,9 +14,10 @@ io.on('connection', function (socket) {
     console.log('a user connected');
     players[socket.id] = {
         rotation: 0,
-        x: Math.floor(Math.random() * 700) + 200,
-        y: Math.floor(Math.random() * 500) + 200,
+        x: 800,
+        y: 800,
         playerId: socket.id,
+        vel: { x: 0, y: 0 },
         team: (Math.floor(Math.random() * 2) == 0) ? 'red' : 'blue'
     };
 
@@ -33,10 +34,11 @@ io.on('connection', function (socket) {
     });
 
     socket.on('playerMovement', function (movementData) {
-        players[socket.id].velX = movementData.velX;
-        players[socket.id].velY = movementData.velY;
+        players[socket.id].x = movementData.pos.x;
+        players[socket.id].y = movementData.pos.y;
+        players[socket.id].vel = movementData.vel;
         players[socket.id].rotation = movementData.rotation;
-
+        console.log(players);
         socket.broadcast.emit('playerMoved', players[socket.id]);
     });
 });
