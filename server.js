@@ -17,7 +17,8 @@ io.on('connection', function (socket) {
         x: 800,
         y: 800,
         playerId: socket.id,
-        vel: { x: 0, y: 0 }
+        vel: { x: 0, y: 0 },
+        hp: 5
     };
 
     socket.emit('currentPlayers', players);
@@ -42,6 +43,22 @@ io.on('connection', function (socket) {
 
     socket.on('shotFired', function () {
         socket.broadcast.emit('enemyFired', players[socket.id]);
+    });
+
+    socket.on('shipHit', function () {
+        console.log('ship hit', players[socket.id]);
+        players[socket.id].hp -= 1;
+        socket.broadcast.emit('healthUpdate', players[socket.id]);
+        console.log(players[socket.id].hp);
+    });
+
+    socket.on('shipDied', function () {
+        socket.broadcast.emit('shipDeath', players[socket.id]);
+    });
+
+    socket.on('respawn', function () {
+        console.log(socket.id);
+        socket.broadcast.emit('shipAlive', players[socket.id]);
     });
 });
 

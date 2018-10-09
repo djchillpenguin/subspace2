@@ -1,4 +1,6 @@
 let ship;
+let healthbar;
+let shipHit = false;
 
 var Ship = new Phaser.Class ({
 
@@ -36,10 +38,10 @@ var Laser = new Phaser.Class ({
         this.body.enable = true;
         this.setRotation(ship.rotation);
         this.setPosition(ship.x, ship.y);
-        this.setVelocityX(ship.body.velocity.x);
-        this.setVelocityY(ship.body.velocity.y);
 
         this.scene.physics.velocityFromRotation(this.rotation, this.speed, this.body.velocity);
+        this.setVelocityX(this.body.velocity.x + ship.body.velocity.x);
+        this.setVelocityY(this.body.velocity.y + ship.body.velocity.y);
         console.log('shoot!');
     },
 
@@ -59,6 +61,33 @@ var Laser = new Phaser.Class ({
         this.setVisible(false);
         this.body.stop();
         this.body.enable = false;
+    }
+});
+
+var LoginScene = new Phaser.Class({
+
+    Extends: Phaser.Scene,
+
+    initialize:
+
+    function LoginScene ()
+    {
+        Phaser.Scene.call(this, { key: 'LoginScene' });
+    },
+
+    preload: function ()
+    {
+
+    },
+
+    create: function ()
+    {
+
+    },
+
+    update: function ()
+    {
+
     }
 });
 
@@ -82,6 +111,7 @@ var BattleScene = new Phaser.Class({
         this.load.image('tiles', 'assets/spaceTiles.png');
         this.load.tilemapTiledJSON('map', 'assets/arenaMap.json');
         this.load.image('laserShot', 'assets/laserShot.png');
+        this.load.spritesheet('healthbar', 'assets/healthbar.png', { frameWidth: 80, frameHeight: 16 });
     },
 
     create: function ()
@@ -92,6 +122,10 @@ var BattleScene = new Phaser.Class({
         ship.setMaxVelocity(500);
         ship.setDepth(10);
         ship.lastFired = 0;
+        ship.hp = 5;
+        ship.isAlive = true;
+        ship.deathTime = 0;
+        ship.respawnTime = 3000;
 
         //create map
         map = this.make.tilemap({ key: 'map' });
@@ -115,6 +149,54 @@ var BattleScene = new Phaser.Class({
             maxSize: 50,
             runChildUpdate: true
         });
+
+        healthbar = this.add.sprite(100, 50, 'healthbar').setScale(2);
+        healthbar.scrollFactorX = 0;
+        healthbar.scrollFactorY = 0;
+
+        this.anims.create({
+            key: 'zeroHealth',
+            frames: [ { key: 'healthbar', frame: 0 }],
+            frameRate: 60,
+            repeat: 0
+        });
+
+        this.anims.create({
+            key: 'oneHealth',
+            frames: [ { key: 'healthbar', frame: 1 }],
+            frameRate: 60,
+            repeat: 0
+        });
+
+        this.anims.create({
+            key: 'twoHealth',
+            frames: [ { key: 'healthbar', frame: 2 }],
+            frameRate: 60,
+            repeat: 0
+        });
+
+        this.anims.create({
+            key: 'threeHealth',
+            frames: [ { key: 'healthbar', frame: 3 }],
+            frameRate: 60,
+            repeat: 0
+        });
+
+        this.anims.create({
+            key: 'fourHealth',
+            frames: [ { key: 'healthbar', frame: 4 }],
+            frameRate: 60,
+            repeat: 0
+        });
+
+        this.anims.create({
+            key: 'fiveHealth',
+            frames: [ { key: 'healthbar', frame: 5 }],
+            frameRate: 60,
+            repeat: 0
+        });
+
+        healthbar.anims.play('fiveHealth');
 
         var self = this;
         this.socket = io();
@@ -169,6 +251,34 @@ var BattleScene = new Phaser.Class({
             })
         });
 
+        this.socket.on('shipDeath', function (playerInfo) {
+            self.otherPlayers.getChildren().forEach(function (otherPlayer) {
+                if (playerInfo.playerId === otherPlayer.playerId) {
+                    otherPlayer.setVisible(false);
+                    otherPlayer.setActive(false);
+                }
+            });
+        });
+
+        this.socket.on('shipAlive', function (playerInfo) {
+            console.log(playerInfo.playerId)
+            self.otherPlayers.getChildren().forEach(function (otherPlayer) {
+                if (playerInfo.playerId === otherPlayer.playerId) {
+                    otherPlayer.setVisible(true);
+                    otherPlayer.setActive(true);
+                }
+            });
+        });
+
+        /*this.socket.on('healthUpdate', function (playerInfo) {
+            if (playerInfo.playerId === otherPlayer.playerId) {
+                if (playerInfo.playerId === otherPlayer.playerId) {
+
+                }
+                console.log('health update');
+            }
+        });*/
+
         this.cursors = this.input.keyboard.createCursorKeys();
 
         camera = this.cameras.main;
@@ -176,13 +286,49 @@ var BattleScene = new Phaser.Class({
         this.physics.add.collider(ship, structureLayer);
         this.physics.add.collider(this.otherPlayers, structureLayer);
         this.physics.add.collider(ship, this.otherPlayers);
-        this.physics.add.collider(lasers, this.otherPlayers);
-        this.physics.add.collider(ship, enemyLasers);
+        this.physics.add.collider(lasers, this.otherPlayers, this.enemyHitCallback);
+        this.physics.add.collider(ship, enemyLasers, this.shipHitCallback);
         ship.setBounce(.75);
     },
 
     update: function (time, delta)
     {
+        if(shipHit)
+        {
+            this.socket.emit('shipHit');
+            console.log('Im hit');
+            if (ship.hp > 0){
+                ship.hp -= 1;
+                changeHealth(ship);
+            }
+
+            shipHit = false;
+        }
+
+        if (ship.hp <= 0 && ship.isAlive)
+        {
+            this.socket.emit('shipDied');
+            ship.isAlive = false;
+            ship.setVisible(false);
+            ship.setActive(false);
+            ship.deathTime = time;
+        }
+
+        if (time > (ship.deathTime + ship.respawnTime) && ship.isAlive === false)
+        {
+            console.log('respawn');
+            this.socket.emit('respawn');
+            this.socket.emit('playerMovement', { x: ship.x, y: ship.y, vel: ship.body.velocity, rotation: ship.rotation });
+            ship.isAlive = true;
+            ship.hp = 5;
+            changeHealth(ship);
+            ship.setVisible(true);
+            ship.setActive(true);
+            ship.setPosition(800, 800);
+            ship.setVelocityX(0);
+            ship.setVelocityY(0);
+            ship.setRotation(0);
+        }
 
         if (this.cursors.left.isDown) {
             ship.setAngularVelocity(-300);
@@ -228,6 +374,22 @@ var BattleScene = new Phaser.Class({
             y: ship.y,
             rotation: ship.rotation
         };
+    },
+
+    shipHitCallback: function (ship, laser)
+    {
+        shipHit = true;
+        laser.kill();
+
+        if (ship.hp > 0)
+        {
+
+        }
+    },
+
+    enemyHitCallback: function (laser, otherPlayer)
+    {
+        laser.kill();
     }
 
 });
@@ -277,4 +439,32 @@ function addOtherPlayers (self, playerInfo)
     otherPlayer.playerId = playerInfo.playerId;
 
     self.otherPlayers.add(otherPlayer);
+}
+
+function changeHealth (ship)
+{
+    if (ship.hp === 0)
+    {
+        healthbar.anims.play('zeroHealth');
+    }
+    else if (ship.hp === 1)
+    {
+        healthbar.anims.play('oneHealth');
+    }
+    else if (ship.hp === 2)
+    {
+        healthbar.anims.play('twoHealth');
+    }
+    else if (ship.hp === 3)
+    {
+        healthbar.anims.play('threeHealth');
+    }
+    else if (ship.hp === 4)
+    {
+        healthbar.anims.play('fourHealth');
+    }
+    else if (ship.hp === 5)
+    {
+        healthbar.anims.play('fiveHealth');
+    }
 }
