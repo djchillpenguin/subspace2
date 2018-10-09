@@ -176,6 +176,8 @@ var BattleScene = new Phaser.Class({
         this.physics.add.collider(ship, structureLayer);
         this.physics.add.collider(this.otherPlayers, structureLayer);
         this.physics.add.collider(ship, this.otherPlayers);
+        this.physics.add.collider(lasers, this.otherPlayers);
+        this.physics.add.collider(ship, enemyLasers);
         ship.setBounce(.75);
     },
 
