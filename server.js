@@ -17,8 +17,7 @@ io.on('connection', function (socket) {
         x: 800,
         y: 800,
         playerId: socket.id,
-        vel: { x: 0, y: 0 },
-        team: (Math.floor(Math.random() * 2) == 0) ? 'red' : 'blue'
+        vel: { x: 0, y: 0 }
     };
 
     socket.emit('currentPlayers', players);
@@ -38,8 +37,11 @@ io.on('connection', function (socket) {
         players[socket.id].y = movementData.y;
         players[socket.id].vel = movementData.vel;
         players[socket.id].rotation = movementData.rotation;
-        console.log(players);
         socket.broadcast.emit('playerMoved', players[socket.id]);
+    });
+
+    socket.on('shotFired', function () {
+        socket.broadcast.emit('enemyFired', players[socket.id]);
     });
 });
 

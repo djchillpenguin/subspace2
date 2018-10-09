@@ -12,6 +12,56 @@ var Ship = new Phaser.Class ({
     }
 });
 
+var Laser = new Phaser.Class ({
+
+    Extends: Phaser.Physics.Arcade.Image,
+
+    initialize:
+
+    function Laser (scene)
+    {
+        Phaser.Physics.Arcade.Image.call(this, scene, 0, 0, 'laserShot');
+
+        this.lifespan = 2000;
+        this.cooldown = 300;
+        this.speed = 500;
+    },
+
+    shoot: function (ship)
+    {
+        this.lifespan = 2000;
+        this.setActive(true);
+        this.setVisible(true);
+        this.setDepth(2)
+        this.body.enable = true;
+        this.setRotation(ship.rotation);
+        this.setPosition(ship.x, ship.y);
+        this.setVelocityX(ship.body.velocity.x);
+        this.setVelocityY(ship.body.velocity.y);
+
+        this.scene.physics.velocityFromRotation(this.rotation, this.speed, this.body.velocity);
+        console.log('shoot!');
+    },
+
+    update: function (time, delta)
+    {
+        this.lifespan -= delta;
+
+        if (this.lifespan <= 0)
+        {
+            this.kill();
+        }
+    },
+
+    kill: function ()
+    {
+        this.setActive(false);
+        this.setVisible(false);
+        this.body.stop();
+        this.body.enable = false;
+    }
+});
+
 var BattleScene = new Phaser.Class({
 
     Extends: Phaser.Scene,
@@ -27,18 +77,21 @@ var BattleScene = new Phaser.Class({
 
     preload: function ()
     {
-        this.load.image('ship', 'assets/ship.png');
+        this.load.image('blueShip', 'assets/blueShip.png');
+        this.load.image('orangeShip', 'assets/orangeShip.png');
         this.load.image('tiles', 'assets/spaceTiles.png');
         this.load.tilemapTiledJSON('map', 'assets/arenaMap.json');
+        this.load.image('laserShot', 'assets/laserShot.png');
     },
 
     create: function ()
     {
         //create player ship
-        ship = this.physics.add.sprite(800, 800, 'ship');
+        ship = this.physics.add.sprite(800, 800, 'blueShip');
         ship.setScale(2);
         ship.setMaxVelocity(500);
         ship.setDepth(10);
+        ship.lastFired = 0;
 
         //create map
         map = this.make.tilemap({ key: 'map' });
@@ -46,7 +99,22 @@ var BattleScene = new Phaser.Class({
         const spaceLayer = map.createStaticLayer('space', tileset, 0, 0).setScale(4);
         const structureLayer = map.createStaticLayer('structure', tileset, 0, 0).setScale(4);
 
+        spaceLayer.scrollFactorX = 0.5;
+        spaceLayer.scrollFactorY = 0.5;
+
         structureLayer.setCollisionByProperty({ collides: true });
+
+        lasers = this.physics.add.group({
+            classType: Laser,
+            maxSize: 20,
+            runChildUpdate: true
+        });
+
+        enemyLasers = this.physics.add.group({
+            classType: Laser,
+            maxSize: 50,
+            runChildUpdate: true
+        });
 
         var self = this;
         this.socket = io();
@@ -83,9 +151,22 @@ var BattleScene = new Phaser.Class({
                     otherPlayer.setVelocityY(playerInfo.vel.y);
                     otherPlayer.x = playerInfo.x;
                     otherPlayer.y = playerInfo.y;
-                    console.log('ship movement updated');
                 }
             });
+        });
+
+        this.socket.on('enemyFired', function (playerInfo) {
+            self.otherPlayers.getChildren().forEach(function (otherPlayer) {
+                if (playerInfo.playerId === otherPlayer.playerId) {
+                    enemyLaser = enemyLasers.get();
+
+                    if(enemyLaser)
+                    {
+                        enemyLaser.shoot(otherPlayer);
+                        console.log('enemy shot!');
+                    }
+                }
+            })
         });
 
         this.cursors = this.input.keyboard.createCursorKeys();
@@ -94,6 +175,7 @@ var BattleScene = new Phaser.Class({
         camera.startFollow(ship);
         this.physics.add.collider(ship, structureLayer);
         this.physics.add.collider(this.otherPlayers, structureLayer);
+        this.physics.add.collider(ship, this.otherPlayers);
         ship.setBounce(.75);
     },
 
@@ -120,13 +202,22 @@ var BattleScene = new Phaser.Class({
             ship.setAcceleration(0);
         }
 
+        if (this.cursors.space.isDown && time > ship.lastFired) {
+            var laser = lasers.get();
+
+            if (laser)
+            {
+                this.socket.emit('shotFired');
+                laser.shoot(ship);
+                ship.lastFired = time + laser.cooldown;
+            }
+        }
+
         var x = ship.x;
         var y = ship.y;
         var r = ship.rotation;
 
         if (ship.oldPosition && (x !== ship.oldPosition.x || y !== ship.oldPosition.y || r !== ship.oldPosition.rotation)) {
-            console.log('velocity or rotation changed');
-            console.log(ship.body.velocity);
             this.socket.emit('playerMovement', { x: ship.x, y: ship.y, vel: ship.body.velocity, rotation: ship.rotation });
         }
 
@@ -162,7 +253,7 @@ var config = {
 //starts game
 var game = new Phaser.Game(config);
 
-function addPlayer (self, playerInfo)
+/*function addPlayer (self, playerInfo)
 {
     self.ship = self.physics.add.image(playerInfo.x, playerInfo.y, 'ship').setScale(2);
 
@@ -174,19 +265,13 @@ function addPlayer (self, playerInfo)
     }
 
     self.ship.setMaxVelocity(500);
-}
+}*/
 
 function addOtherPlayers (self, playerInfo)
 {
-    const otherPlayer = self.physics.add.sprite(playerInfo.x, playerInfo.y, 'ship').setScale(2);
+    const otherPlayer = self.physics.add.sprite(playerInfo.x, playerInfo.y, 'orangeShip').setScale(2);
     otherPlayer.setDepth(10);
 
-    if (playerInfo.team === 'blue') {
-        otherPlayer.setTint(0x0000ff);
-    }
-    else {
-        otherPlayer.setTint(0xff0000);
-    }
     otherPlayer.playerId = playerInfo.playerId;
 
     self.otherPlayers.add(otherPlayer);
