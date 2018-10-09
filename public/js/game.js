@@ -34,8 +34,9 @@ var Laser = new Phaser.Class ({
         this.lifespan = 2000;
         this.setActive(true);
         this.setVisible(true);
-        this.setDepth(2)
+        this.setDepth(2);
         this.body.enable = true;
+        this.body.setMass(0.01);
         this.setRotation(ship.rotation);
         this.setPosition(ship.x, ship.y);
 
