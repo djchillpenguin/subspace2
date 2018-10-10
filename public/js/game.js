@@ -113,10 +113,20 @@ var BattleScene = new Phaser.Class({
         this.load.tilemapTiledJSON('map', 'assets/arenaMap.json');
         this.load.image('laserShot', 'assets/laserShot.png');
         this.load.spritesheet('healthbar', 'assets/healthbar.png', { frameWidth: 80, frameHeight: 16 });
+        this.load.audio('laser', 'assets/laser.wav');
+        this.load.audio('engine', 'assets/engine.wav');
+        this.load.audio('shipHit', 'assets/shipHit.wav');
+        this.load.audio('explosion', 'assets/explosion.wav');
     },
 
     create: function ()
     {
+        //create sounds
+        laserSound = this.sound.add('laser');
+        engine = this.sound.add('engine');
+        shipHitSound = this.sound.add('shipHit');
+        explosion = this.sound.add('explosion');
+
         //create player ship
         ship = this.physics.add.sprite(800, 800, 'blueShip');
         ship.setScale(2);
@@ -246,6 +256,7 @@ var BattleScene = new Phaser.Class({
                     if(enemyLaser)
                     {
                         enemyLaser.shoot(otherPlayer);
+                        laserSound.play();
                         console.log('enemy shot!');
                     }
                 }
@@ -257,6 +268,7 @@ var BattleScene = new Phaser.Class({
                 if (playerInfo.playerId === otherPlayer.playerId) {
                     otherPlayer.setVisible(false);
                     otherPlayer.setActive(false);
+                    explosion.play();
                 }
             });
         });
@@ -301,6 +313,7 @@ var BattleScene = new Phaser.Class({
             if (ship.hp > 0){
                 ship.hp -= 1;
                 changeHealth(ship);
+                shipHitSound.play();
             }
 
             shipHit = false;
@@ -312,6 +325,7 @@ var BattleScene = new Phaser.Class({
             ship.isAlive = false;
             ship.setVisible(false);
             ship.setActive(false);
+            explosion.play();
             ship.deathTime = time;
         }
 
@@ -342,10 +356,12 @@ var BattleScene = new Phaser.Class({
         }
 
         if (this.cursors.up.isDown) {
-            this.physics.velocityFromRotation(ship.rotation, 200, ship.body.acceleration)
+            this.physics.velocityFromRotation(ship.rotation, 200, ship.body.acceleration);
+            engine.play();
         }
         else if (this.cursors.down.isDown) {
-            this.physics.velocityFromRotation(ship.rotation, -200, ship.body.acceleration)
+            this.physics.velocityFromRotation(ship.rotation, -200, ship.body.acceleration);
+            engine.play();
         }
         else {
             ship.setAcceleration(0);
@@ -358,6 +374,7 @@ var BattleScene = new Phaser.Class({
             {
                 this.socket.emit('shotFired');
                 laser.shoot(ship);
+                laserSound.play();
                 ship.lastFired = time + laser.cooldown;
             }
         }
