@@ -113,10 +113,12 @@ var BattleScene = new Phaser.Class({
         this.load.tilemapTiledJSON('map', 'assets/arenaMap.json');
         this.load.image('laserShot', 'assets/laserShot.png');
         this.load.spritesheet('healthbar', 'assets/healthbar.png', { frameWidth: 80, frameHeight: 16 });
+        this.load.spritesheet('explosion', 'assets/explosion.png', { frameWidth: 32, frameHeight: 32 });
         this.load.audio('laser', 'assets/laser.wav');
         this.load.audio('engine', 'assets/engine.wav');
         this.load.audio('shipHit', 'assets/shipHit.wav');
         this.load.audio('explosion', 'assets/explosion.wav');
+        this.load.audio('wallBounceSound', 'assets/wallBounce.wav');
     },
 
     create: function ()
@@ -125,10 +127,12 @@ var BattleScene = new Phaser.Class({
         laserSound = this.sound.add('laser');
         engine = this.sound.add('engine');
         shipHitSound = this.sound.add('shipHit');
-        explosion = this.sound.add('explosion');
+        explosionSound = this.sound.add('explosion');
+        wallBounceSound = this.sound.add('wallBounceSound');
 
         //create player ship
         ship = this.physics.add.sprite(800, 800, 'blueShip');
+        ship.setCircle(8);
         ship.setScale(2);
         ship.setMaxVelocity(500);
         ship.setDepth(10);
@@ -136,7 +140,7 @@ var BattleScene = new Phaser.Class({
         ship.hp = 5;
         ship.isAlive = true;
         ship.deathTime = 0;
-        ship.respawnTime = 3000;
+        ship.respawnTime = 5000;
 
         //create map
         map = this.make.tilemap({ key: 'map' });
@@ -164,6 +168,8 @@ var BattleScene = new Phaser.Class({
         healthbar = this.add.sprite(100, 50, 'healthbar').setScale(2);
         healthbar.scrollFactorX = 0;
         healthbar.scrollFactorY = 0;
+
+        //healthbar animations
 
         this.anims.create({
             key: 'zeroHealth',
@@ -208,6 +214,24 @@ var BattleScene = new Phaser.Class({
         });
 
         healthbar.anims.play('fiveHealth');
+
+        //ship animations
+
+        this.anims.create({
+            key: 'shipReset',
+            frames: [{ key: 'ship', frame: 0 }],
+            frameRate: 60,
+            repeat: 0
+        });
+
+        this.anims.create({
+            key: 'shipExplosion',
+            frames: this.anims.generateFrameNumbers('explosion', { start: 0, end: 7 }),
+            frameRate: 8,
+            repeat: 0
+        });
+
+        //network stuff
 
         var self = this;
         this.socket = io();
@@ -266,9 +290,19 @@ var BattleScene = new Phaser.Class({
         this.socket.on('shipDeath', function (playerInfo) {
             self.otherPlayers.getChildren().forEach(function (otherPlayer) {
                 if (playerInfo.playerId === otherPlayer.playerId) {
-                    otherPlayer.setVisible(false);
-                    otherPlayer.setActive(false);
-                    explosion.play();
+                    otherPlayer.anims.play('shipExplosion');
+                    explosionSound.play();
+
+                    timedEvent = self.time.addEvent({
+                        delay: 1000,
+                        callback: onEvent,
+                        callbackScope: self
+                    });
+
+                    function onEvent() {
+                        otherPlayer.setVisible(false);
+                        otherPlayer.setActive(false);
+                    }
                 }
             });
         });
@@ -279,6 +313,8 @@ var BattleScene = new Phaser.Class({
                 if (playerInfo.playerId === otherPlayer.playerId) {
                     otherPlayer.setVisible(true);
                     otherPlayer.setActive(true);
+                    //otherPlayer.anims.play('shipReset');
+                    otherPlayer.setTexture('orangeShip');
                 }
             });
         });
@@ -296,8 +332,8 @@ var BattleScene = new Phaser.Class({
 
         camera = this.cameras.main;
         camera.startFollow(ship);
-        this.physics.add.collider(ship, structureLayer);
-        this.physics.add.collider(this.otherPlayers, structureLayer);
+        this.physics.add.collider(ship, structureLayer, this.structureLayerVsShip);
+        this.physics.add.collider(this.otherPlayers, structureLayer, this.structureLayerVsShip);
         this.physics.add.collider(ship, this.otherPlayers);
         this.physics.add.collider(lasers, this.otherPlayers, this.enemyHitCallback);
         this.physics.add.collider(ship, enemyLasers, this.shipHitCallback);
@@ -321,12 +357,22 @@ var BattleScene = new Phaser.Class({
 
         if (ship.hp <= 0 && ship.isAlive)
         {
-            this.socket.emit('shipDied');
             ship.isAlive = false;
-            ship.setVisible(false);
-            ship.setActive(false);
-            explosion.play();
+            ship.anims.play('shipExplosion');
+            explosionSound.play();
+            this.socket.emit('shipDied');
             ship.deathTime = time;
+
+            timedEvent = this.time.addEvent({
+                delay: 1000,
+                callback: onEvent,
+                callbackScope: this
+            });
+
+            function onEvent() {
+                ship.setVisible(false);
+                ship.setActive(false);
+            }
         }
 
         if (time > (ship.deathTime + ship.respawnTime) && ship.isAlive === false)
@@ -343,6 +389,8 @@ var BattleScene = new Phaser.Class({
             ship.setVelocityX(0);
             ship.setVelocityY(0);
             ship.setRotation(0);
+            //ship.anims.play('shipReset');
+            ship.setTexture('blueShip');
         }
 
         if (this.cursors.left.isDown) {
@@ -408,6 +456,12 @@ var BattleScene = new Phaser.Class({
     enemyHitCallback: function (laser, otherPlayer)
     {
         laser.kill();
+        shipHitSound.play();
+    },
+
+    structureLayerVsShip: function ()
+    {
+        wallBounceSound.play();
     }
 
 });
@@ -453,6 +507,7 @@ function addOtherPlayers (self, playerInfo)
 {
     const otherPlayer = self.physics.add.sprite(playerInfo.x, playerInfo.y, 'orangeShip').setScale(2);
     otherPlayer.setDepth(10);
+    otherPlayer.setCircle(8);
 
     otherPlayer.playerId = playerInfo.playerId;
 
