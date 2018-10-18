@@ -2,6 +2,7 @@ let ship;
 let healthbar;
 let shipHit = false;
 
+//custom classes
 var Ship = new Phaser.Class ({
 
     Extends: Phaser.Physics.Arcade.Sprite,
@@ -11,6 +12,49 @@ var Ship = new Phaser.Class ({
     function Ship (scene)
     {
         Phaser.Physics.Arcade.Sprite.call(this, scene, 0, 0, 'ship');
+    }
+});
+
+var EngineFire = new Phaser.Class ({
+
+    Extends: Phaser.Physics.Arcade.Sprite,
+
+    initialize:
+
+    function EngineFire (scene)
+    {
+        Phaser.Physics.Arcade.Sprite.call(this, scene, 0, 0, 'engineFire');
+
+        this.lifespan = 1200;
+    },
+
+    fire: function (ship)
+    {
+        this.setScale(2);
+        this.setDepth(15);
+        this.setPosition(ship.x, ship.y);
+        this.setRotation(ship.rotation);
+        this.setVelocityX(ship.body.velocity.x);
+        this.setVelocityY(ship.body.velocity.y);
+    },
+
+    update: function (time, delta)
+    {
+        this.lifespan -= delta;
+
+        if (this.lifespan <= 0)
+        {
+            this.kill();
+        }
+    },
+
+    kill: function ()
+    {
+        this.setActive(false);
+        this.setVisible(false);
+        this.body.stop();
+        this.body.enable = false;
+        this.destroy();
     }
 });
 
@@ -37,8 +81,8 @@ var Laser = new Phaser.Class ({
         this.setDepth(2);
         this.body.enable = true;
         this.body.setMass(0.01);
-        this.setRotation(ship.rotation);
         this.setPosition(ship.x, ship.y);
+        this.setRotation(ship.rotation);
 
         this.scene.physics.velocityFromRotation(this.rotation, this.speed, this.body.velocity);
         this.setVelocityX(this.body.velocity.x + ship.body.velocity.x);
@@ -65,6 +109,7 @@ var Laser = new Phaser.Class ({
     }
 });
 
+//login scene
 var LoginScene = new Phaser.Class({
 
     Extends: Phaser.Scene,
@@ -92,6 +137,7 @@ var LoginScene = new Phaser.Class({
     }
 });
 
+//battle scene
 var BattleScene = new Phaser.Class({
 
     Extends: Phaser.Scene,
@@ -109,11 +155,12 @@ var BattleScene = new Phaser.Class({
     {
         this.load.image('blueShip', 'assets/blueShip.png');
         this.load.image('orangeShip', 'assets/orangeShip.png');
-        this.load.image('tiles', 'assets/spaceTiles.png');
+        this.load.image('tiles', 'assets/spaceTiles-extruded.png');
         this.load.tilemapTiledJSON('map', 'assets/arenaMap.json');
         this.load.image('laserShot', 'assets/laserShot.png');
         this.load.spritesheet('healthbar', 'assets/healthbar.png', { frameWidth: 80, frameHeight: 16 });
         this.load.spritesheet('explosion', 'assets/explosion.png', { frameWidth: 32, frameHeight: 32 });
+        this.load.spritesheet('engineFire', 'assets/engineFire.png', { frameWidth: 22, frameHeight: 22 });
         this.load.audio('laser', 'assets/laser.wav');
         this.load.audio('engine', 'assets/engine.wav');
         this.load.audio('shipHit', 'assets/shipHit.wav');
@@ -134,7 +181,7 @@ var BattleScene = new Phaser.Class({
         ship = this.physics.add.sprite(800, 800, 'blueShip');
         ship.setCircle(8);
         ship.setScale(2);
-        ship.setMaxVelocity(500);
+        ship.setMaxVelocity(400);
         ship.setDepth(10);
         ship.lastFired = 0;
         ship.hp = 5;
@@ -144,7 +191,7 @@ var BattleScene = new Phaser.Class({
 
         //create map
         map = this.make.tilemap({ key: 'map' });
-        const tileset = map.addTilesetImage('spaceTiles', 'tiles');
+        const tileset = map.addTilesetImage('spaceTiles', 'tiles', 16, 16, 1, 2);
         const spaceLayer = map.createStaticLayer('space', tileset, 0, 0).setScale(4);
         const structureLayer = map.createStaticLayer('structure', tileset, 0, 0).setScale(4);
 
@@ -162,6 +209,12 @@ var BattleScene = new Phaser.Class({
         enemyLasers = this.physics.add.group({
             classType: Laser,
             maxSize: 50,
+            runChildUpdate: true
+        });
+
+        engineFires = this.physics.add.group({
+            classType: EngineFire,
+            maxSize: 200,
             runChildUpdate: true
         });
 
@@ -228,6 +281,13 @@ var BattleScene = new Phaser.Class({
             key: 'shipExplosion',
             frames: this.anims.generateFrameNumbers('explosion', { start: 0, end: 7 }),
             frameRate: 8,
+            repeat: 0
+        });
+
+        this.anims.create({
+            key: 'shipEngineFire',
+            frames: this.anims.generateFrameNumbers('engineFire', { start: 0, end: 7 }),
+            frameRate: 6,
             repeat: 0
         });
 
@@ -406,10 +466,25 @@ var BattleScene = new Phaser.Class({
         if (this.cursors.up.isDown) {
             this.physics.velocityFromRotation(ship.rotation, 200, ship.body.acceleration);
             engine.play();
+            engineFire = engineFires.get();
+
+            if(engineFire)
+            {
+                engineFire.fire(ship);
+                engineFire.anims.play('shipEngineFire');
+            }
         }
         else if (this.cursors.down.isDown) {
             this.physics.velocityFromRotation(ship.rotation, -200, ship.body.acceleration);
             engine.play();
+            engineFire = engineFires.get();
+
+            if(engineFire)
+            {
+                engineFire.fire(ship);
+                engineFire.anims.play('shipEngineFire');
+                engineFire.setDepth(0);
+            }
         }
         else {
             ship.setAcceleration(0);

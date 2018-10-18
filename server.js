@@ -49,7 +49,6 @@ io.on('connection', function (socket) {
         console.log('ship hit', players[socket.id]);
         players[socket.id].hp -= 1;
         socket.broadcast.emit('healthUpdate', players[socket.id]);
-        console.log(players[socket.id].hp);
     });
 
     socket.on('shipDied', function () {
@@ -57,7 +56,6 @@ io.on('connection', function (socket) {
     });
 
     socket.on('respawn', function () {
-        console.log(socket.id);
         socket.broadcast.emit('shipAlive', players[socket.id]);
     });
 });
