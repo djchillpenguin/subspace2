@@ -19,10 +19,21 @@
             margin: auto;
         }
 
+        #pilotname {
+            position: absolute;
+            left: 40%;
+            top: 50%;
+            margin: auto;
+            z-index: 1;
+        }
+
         </style>
     </head>
     <body>
         <script src="/socket.io/socket.io.js"></script>
         <script src="js/game.js"></script>
+        <div>
+            <input id="pilotname" type="text">
+        </div>
     </body>
 </html>

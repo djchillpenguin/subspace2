@@ -18,12 +18,19 @@ io.on('connection', function (socket) {
         y: 800,
         playerId: socket.id,
         vel: { x: 0, y: 0 },
-        hp: 5
+        hp: 5,
+        pilotname: ''
     };
+
+    socket.on('login', function(name) {
+        players[socket.id].pilotname = name;
+        socket.emit('updateName', players[socket.id]);
+        socket.broadcast.emit('newPlayer', players[socket.id]);
+    });
 
     socket.emit('currentPlayers', players);
 
-    socket.broadcast.emit('newPlayer', players[socket.id]);
+    //socket.broadcast.emit('newPlayer', players[socket.id]);
 
     socket.on('disconnect', function () {
         console.log('user disconnected');

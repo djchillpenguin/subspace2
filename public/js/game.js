@@ -1,6 +1,7 @@
 let ship;
 let healthbar;
 let shipHit = false;
+let pilotName = {};
 
 //custom classes
 var Ship = new Phaser.Class ({
@@ -14,6 +15,7 @@ var Ship = new Phaser.Class ({
         Phaser.Physics.Arcade.Sprite.call(this, scene, 0, 0, 'ship');
     }
 });
+
 
 var EngineFire = new Phaser.Class ({
 
@@ -30,7 +32,7 @@ var EngineFire = new Phaser.Class ({
 
     fire: function (ship)
     {
-        this.setScale(2);
+        this.setScale(1);
         this.setDepth(15);
         this.setPosition(ship.x, ship.y);
         this.setRotation(ship.rotation);
@@ -50,10 +52,10 @@ var EngineFire = new Phaser.Class ({
 
     kill: function ()
     {
-        this.setActive(false);
+        /*this.setActive(false);
         this.setVisible(false);
         this.body.stop();
-        this.body.enable = false;
+        this.body.enable = false;*/
         this.destroy();
     }
 });
@@ -123,12 +125,40 @@ var LoginScene = new Phaser.Class({
 
     preload: function ()
     {
-
+        this.load.image('blueShip', 'assets/blueShip.png');
+        this.load.image('orangeShip', 'assets/orangeShip.png');
+        this.load.image('tiles', 'assets/spaceTiles-extruded.png');
+        this.load.tilemapTiledJSON('map', 'assets/arenaMap.json');
+        this.load.image('laserShot', 'assets/laserShot.png');
+        this.load.spritesheet('healthbar', 'assets/healthbar.png', { frameWidth: 80, frameHeight: 16 });
+        this.load.spritesheet('explosion', 'assets/explosion.png', { frameWidth: 32, frameHeight: 32 });
+        this.load.spritesheet('engineFire', 'assets/engineFire.png', { frameWidth: 22, frameHeight: 22 });
+        this.load.audio('laser', 'assets/laser.wav');
+        this.load.audio('engine', 'assets/engine.wav');
+        this.load.audio('shipHit', 'assets/shipHit.wav');
+        this.load.audio('explosion', 'assets/explosion.wav');
+        this.load.audio('wallBounceSound', 'assets/wallBounce.wav');
+        this.load.image('loginButton', 'assets/loginButton.png');
     },
 
     create: function ()
     {
+        //this.socket = io();
 
+        title = this.add.text(320, 100, 'SUBSPACE 2',
+                { font: '48px Courier', fill: '#D1D1FA' });
+        loginButtonText = this.add.text(410, 320, 'LOGIN',
+                          { font: '24px Courier', fill: '#D1D1FA'});
+        loginButtonText.setDepth(2);
+        loginButton = this.add.sprite(320, 300, 'loginButton').setInteractive().setScale(4).setOrigin(0, 0);
+
+        loginButton.on('pointerdown', function (pointer) {
+            pilotname = document.getElementById("pilotname").value;
+            //this.socket.emit('login', pilotname);
+            document.getElementById("pilotname").disabled = true;
+            document.getElementById("pilotname").style.display = "none";
+            this.scene.start('BattleScene');
+        }, this);
     },
 
     update: function ()
@@ -153,7 +183,7 @@ var BattleScene = new Phaser.Class({
 
     preload: function ()
     {
-        this.load.image('blueShip', 'assets/blueShip.png');
+        /*this.load.image('blueShip', 'assets/blueShip.png');
         this.load.image('orangeShip', 'assets/orangeShip.png');
         this.load.image('tiles', 'assets/spaceTiles-extruded.png');
         this.load.tilemapTiledJSON('map', 'assets/arenaMap.json');
@@ -165,7 +195,7 @@ var BattleScene = new Phaser.Class({
         this.load.audio('engine', 'assets/engine.wav');
         this.load.audio('shipHit', 'assets/shipHit.wav');
         this.load.audio('explosion', 'assets/explosion.wav');
-        this.load.audio('wallBounceSound', 'assets/wallBounce.wav');
+        this.load.audio('wallBounceSound', 'assets/wallBounce.wav');*/
     },
 
     create: function ()
@@ -180,20 +210,22 @@ var BattleScene = new Phaser.Class({
         //create player ship
         ship = this.physics.add.sprite(800, 800, 'blueShip');
         ship.setCircle(8);
-        ship.setScale(2);
-        ship.setMaxVelocity(400);
+        ship.setScale(1);
+        ship.setMaxVelocity(250);
         ship.setDepth(10);
         ship.lastFired = 0;
         ship.hp = 5;
         ship.isAlive = true;
         ship.deathTime = 0;
         ship.respawnTime = 5000;
+        ship.pilotname = pilotname;
+        console.log(ship.pilotname);
 
         //create map
         map = this.make.tilemap({ key: 'map' });
         const tileset = map.addTilesetImage('spaceTiles', 'tiles', 16, 16, 1, 2);
-        const spaceLayer = map.createStaticLayer('space', tileset, 0, 0).setScale(4);
-        const structureLayer = map.createStaticLayer('structure', tileset, 0, 0).setScale(4);
+        const spaceLayer = map.createStaticLayer('space', tileset, 0, 0).setScale(2);
+        const structureLayer = map.createStaticLayer('structure', tileset, 0, 0).setScale(2);
 
         spaceLayer.scrollFactorX = 0.5;
         spaceLayer.scrollFactorY = 0.5;
@@ -218,7 +250,7 @@ var BattleScene = new Phaser.Class({
             runChildUpdate: true
         });
 
-        healthbar = this.add.sprite(100, 50, 'healthbar').setScale(2);
+        healthbar = this.add.sprite(100, 50, 'healthbar').setScale(1);
         healthbar.scrollFactorX = 0;
         healthbar.scrollFactorY = 0;
 
@@ -287,7 +319,7 @@ var BattleScene = new Phaser.Class({
         this.anims.create({
             key: 'shipEngineFire',
             frames: this.anims.generateFrameNumbers('engineFire', { start: 0, end: 7 }),
-            frameRate: 6,
+            frameRate: 16,
             repeat: 0
         });
 
@@ -295,6 +327,7 @@ var BattleScene = new Phaser.Class({
 
         var self = this;
         this.socket = io();
+        this.socket.emit('login', ship.pilotname);
         this.otherPlayers = this.physics.add.group();
 
         this.socket.on('currentPlayers', function (players) {
@@ -310,12 +343,21 @@ var BattleScene = new Phaser.Class({
 
         this.socket.on('newPlayer', function (playerInfo) {
             addOtherPlayers(self, playerInfo);
+            console.log('new player name: ', playerInfo.pilotname);
         });
 
         this.socket.on('disconnect', function (playerId) {
             self.otherPlayers.getChildren().forEach(function (otherPlayer) {
                 if (playerId === otherPlayer.playerId) {
                     otherPlayer.destroy();
+                }
+            });
+        });
+
+        this.socket.on('updateName', function (playerInfo) {
+            self.otherPlayers.getChildren().forEach(function (otherPlayer) {
+                if (playerInfo.playerId === otherPlayer.playerId) {
+                    otherPlayer.pilotname = playerInfo.pilotname;
                 }
             });
         });
@@ -397,6 +439,7 @@ var BattleScene = new Phaser.Class({
         this.physics.add.collider(ship, this.otherPlayers);
         this.physics.add.collider(lasers, this.otherPlayers, this.enemyHitCallback);
         this.physics.add.collider(ship, enemyLasers, this.shipHitCallback);
+        this.physics.add.collider(engineFires, structureLayer, this.structureLayerVsEngineFires);
         ship.setBounce(.75);
     },
 
@@ -515,6 +558,11 @@ var BattleScene = new Phaser.Class({
             y: ship.y,
             rotation: ship.rotation
         };
+
+        this.otherPlayers.getChildren().forEach(function (otherPlayer) {
+            otherPlayer.nameText.x = otherPlayer.x + 10;
+            otherPlayer.nameText.y = otherPlayer.y + 10;
+        });
     },
 
     shipHitCallback: function (ship, laser)
@@ -537,6 +585,14 @@ var BattleScene = new Phaser.Class({
     structureLayerVsShip: function ()
     {
         wallBounceSound.play();
+    },
+
+    structureLayerVsEngineFires: function (engineFire, structureLayer)
+    {
+        if(engineFire)
+        {
+            engineFire.kill();
+        }
     }
 
 });
@@ -544,8 +600,8 @@ var BattleScene = new Phaser.Class({
 //game config
 var config = {
     type: Phaser.AUTO,
-    width: 1280,
-    height: 720,
+    width: 960,
+    height: 540,
     parent: 'game',
     pixelArt: true,
     physics: {
@@ -557,6 +613,7 @@ var config = {
         }
     },
     scene: [
+        LoginScene,
         BattleScene
     ]
 };
@@ -580,11 +637,14 @@ var game = new Phaser.Game(config);
 
 function addOtherPlayers (self, playerInfo)
 {
-    const otherPlayer = self.physics.add.sprite(playerInfo.x, playerInfo.y, 'orangeShip').setScale(2);
+    const otherPlayer = self.physics.add.sprite(playerInfo.x, playerInfo.y, 'orangeShip').setScale(1);
     otherPlayer.setDepth(10);
     otherPlayer.setCircle(8);
 
     otherPlayer.playerId = playerInfo.playerId;
+
+    otherPlayer.nameText = self.add.text(playerInfo.x + 8, playerInfo.y + 8, playerInfo.pilotname,
+                { font: '10px Courier', fill: '#00f900' });
 
     self.otherPlayers.add(otherPlayer);
 }
