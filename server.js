@@ -19,11 +19,13 @@ io.on('connection', function (socket) {
         playerId: socket.id,
         vel: { x: 0, y: 0 },
         hp: 5,
-        pilotname: ''
+        pilotname: '',
+        shipModel: '',
     };
 
-    socket.on('login', function(name) {
+    socket.on('login', function(name, model) {
         players[socket.id].pilotname = name;
+        players[socket.id].shipModel = model;
         socket.emit('updateName', players[socket.id]);
         socket.broadcast.emit('newPlayer', players[socket.id]);
     });

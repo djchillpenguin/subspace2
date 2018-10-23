@@ -2,6 +2,7 @@ let ship;
 let healthbar;
 let shipHit = false;
 let pilotName = {};
+let shipModel = "";
 
 //custom classes
 var Ship = new Phaser.Class ({
@@ -36,6 +37,7 @@ var EngineFire = new Phaser.Class ({
         this.setDepth(15);
         this.setPosition(ship.x, ship.y);
         this.setRotation(ship.rotation);
+        this.setMaxVelocity(225);
         this.setVelocityX(ship.body.velocity.x);
         this.setVelocityY(ship.body.velocity.y);
     },
@@ -125,8 +127,13 @@ var LoginScene = new Phaser.Class({
 
     preload: function ()
     {
-        this.load.image('blueShip', 'assets/blueShip.png');
-        this.load.image('orangeShip', 'assets/orangeShip.png');
+        this.load.image('blueShip', 'assets/ships/blueShip.png');
+        this.load.image('orangeShip', 'assets/ships/orangeShip.png');
+        this.load.image('greenShip', 'assets/ships/greenShip.png');
+        this.load.image('purpleShip', 'assets/ships/purpleShip.png');
+        this.load.image('redShip', 'assets/ships/redShip.png');
+        this.load.image('whiteShip', 'assets/ships/whiteShip.png');
+        this.load.image('yellowShip', 'assets/ships/yellowShip.png');
         this.load.image('tiles', 'assets/spaceTiles-extruded.png');
         this.load.tilemapTiledJSON('map', 'assets/arenaMap.json');
         this.load.image('laserShot', 'assets/laserShot.png');
@@ -139,25 +146,52 @@ var LoginScene = new Phaser.Class({
         this.load.audio('explosion', 'assets/explosion.wav');
         this.load.audio('wallBounceSound', 'assets/wallBounce.wav');
         this.load.image('loginButton', 'assets/loginButton.png');
+        this.load.image('leftButton', 'assets/leftButton.png');
+        this.load.image('rightButton', 'assets/rightButton.png');
     },
 
     create: function ()
     {
         //this.socket = io();
+        var shipChoices = [
+            'whiteShip',
+            'yellowShip',
+            'orangeShip',
+            'redShip',
+            'purpleShip',
+            'blueShip',
+            'greenShip'
+        ];
 
-        title = this.add.text(320, 100, 'SUBSPACE 2',
-                { font: '48px Courier', fill: '#D1D1FA' });
+        title = this.add.text(320, 50, 'SUBSPACE 2',
+                { font: '48px Righteous', fill: '#ffffff' });
         loginButtonText = this.add.text(410, 320, 'LOGIN',
-                          { font: '24px Courier', fill: '#D1D1FA'});
+                          { font: '24px Righteous', fill: '#ffffff'});
         loginButtonText.setDepth(2);
         loginButton = this.add.sprite(320, 300, 'loginButton').setInteractive().setScale(4).setOrigin(0, 0);
+        leftButton = this.add.sprite(320, 200, 'leftButton').setInteractive().setScale(4).setOrigin(0, 0);
+        rightButton = this.add.sprite(512, 200, 'rightButton').setInteractive().setScale(4).setOrigin(0, 0);
+        shipChoice = this.add.sprite(424, 200, shipChoices[0]).setScale(4).setOrigin(0, 0);
 
         loginButton.on('pointerdown', function (pointer) {
             pilotname = document.getElementById("pilotname").value;
+            shipModel = shipChoices[0];
             //this.socket.emit('login', pilotname);
             document.getElementById("pilotname").disabled = true;
             document.getElementById("pilotname").style.display = "none";
             this.scene.start('BattleScene');
+        }, this);
+
+        leftButton.on('pointerdown', function (pointer) {
+            temp = shipChoices.shift();
+            shipChoice.setTexture(shipChoices[0]);
+            shipChoices.push(temp);
+        }, this);
+
+        rightButton.on('pointerdown', function (pointer) {
+            temp = shipChoices.pop();
+            shipChoice.setTexture(temp);
+            shipChoices.unshift(temp);
         }, this);
     },
 
@@ -208,7 +242,7 @@ var BattleScene = new Phaser.Class({
         wallBounceSound = this.sound.add('wallBounceSound');
 
         //create player ship
-        ship = this.physics.add.sprite(800, 800, 'blueShip');
+        ship = this.physics.add.sprite(800, 800, shipModel);
         ship.setCircle(8);
         ship.setScale(1);
         ship.setMaxVelocity(250);
@@ -219,6 +253,7 @@ var BattleScene = new Phaser.Class({
         ship.deathTime = 0;
         ship.respawnTime = 5000;
         ship.pilotname = pilotname;
+        ship.shipModel = shipModel;
         console.log(ship.pilotname);
 
         //create map
@@ -227,8 +262,8 @@ var BattleScene = new Phaser.Class({
         const spaceLayer = map.createStaticLayer('space', tileset, 0, 0).setScale(2);
         const structureLayer = map.createStaticLayer('structure', tileset, 0, 0).setScale(2);
 
-        spaceLayer.scrollFactorX = 0.5;
-        spaceLayer.scrollFactorY = 0.5;
+        spaceLayer.scrollFactorX = 0.2;
+        spaceLayer.scrollFactorY = 0.2;
 
         structureLayer.setCollisionByProperty({ collides: true });
 
@@ -327,7 +362,7 @@ var BattleScene = new Phaser.Class({
 
         var self = this;
         this.socket = io();
-        this.socket.emit('login', ship.pilotname);
+        this.socket.emit('login', ship.pilotname, ship.shipModel);
         this.otherPlayers = this.physics.add.group();
 
         this.socket.on('currentPlayers', function (players) {
@@ -358,6 +393,7 @@ var BattleScene = new Phaser.Class({
             self.otherPlayers.getChildren().forEach(function (otherPlayer) {
                 if (playerInfo.playerId === otherPlayer.playerId) {
                     otherPlayer.pilotname = playerInfo.pilotname;
+                    otherPlayer.setTexture(playerInfo.shipModel);
                 }
             });
         });
@@ -416,7 +452,7 @@ var BattleScene = new Phaser.Class({
                     otherPlayer.setVisible(true);
                     otherPlayer.setActive(true);
                     //otherPlayer.anims.play('shipReset');
-                    otherPlayer.setTexture('orangeShip');
+                    otherPlayer.setTexture(playerInfo.shipModel);
                 }
             });
         });
@@ -493,7 +529,7 @@ var BattleScene = new Phaser.Class({
             ship.setVelocityY(0);
             ship.setRotation(0);
             //ship.anims.play('shipReset');
-            ship.setTexture('blueShip');
+            ship.setTexture(ship.shipModel);
         }
 
         if (this.cursors.left.isDown) {
@@ -637,14 +673,14 @@ var game = new Phaser.Game(config);
 
 function addOtherPlayers (self, playerInfo)
 {
-    const otherPlayer = self.physics.add.sprite(playerInfo.x, playerInfo.y, 'orangeShip').setScale(1);
+    const otherPlayer = self.physics.add.sprite(playerInfo.x, playerInfo.y, playerInfo.shipModel).setScale(1);
     otherPlayer.setDepth(10);
     otherPlayer.setCircle(8);
 
     otherPlayer.playerId = playerInfo.playerId;
 
     otherPlayer.nameText = self.add.text(playerInfo.x + 8, playerInfo.y + 8, playerInfo.pilotname,
-                { font: '10px Courier', fill: '#00f900' });
+                { font: '10px VT323', fill: '#00f900' });
 
     self.otherPlayers.add(otherPlayer);
 }
