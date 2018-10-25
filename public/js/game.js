@@ -132,14 +132,13 @@ var LoginScene = new Phaser.Class({
         this.load.image('greenShip', 'assets/ships/greenShip.png');
         this.load.image('purpleShip', 'assets/ships/purpleShip.png');
         this.load.image('redShip', 'assets/ships/redShip.png');
-        this.load.image('whiteShip', 'assets/ships/whiteShip.png');
         this.load.image('yellowShip', 'assets/ships/yellowShip.png');
         this.load.image('tiles', 'assets/spaceTiles-extruded.png');
         this.load.tilemapTiledJSON('map', 'assets/arenaMap.json');
         this.load.image('laserShot', 'assets/laserShot.png');
         this.load.spritesheet('healthbar', 'assets/healthbar.png', { frameWidth: 80, frameHeight: 16 });
         this.load.spritesheet('explosion', 'assets/explosion.png', { frameWidth: 32, frameHeight: 32 });
-        this.load.spritesheet('engineFire', 'assets/engineFire.png', { frameWidth: 22, frameHeight: 22 });
+        this.load.spritesheet('engineFire', 'assets/engineFireNew.png', { frameWidth: 24, frameHeight: 24 });
         this.load.audio('laser', 'assets/laser.wav');
         this.load.audio('engine', 'assets/engine.wav');
         this.load.audio('shipHit', 'assets/shipHit.wav');
@@ -148,13 +147,13 @@ var LoginScene = new Phaser.Class({
         this.load.image('loginButton', 'assets/loginButton.png');
         this.load.image('leftButton', 'assets/leftButton.png');
         this.load.image('rightButton', 'assets/rightButton.png');
+        this.load.image('realSpace', 'assets/realSpace.png');
     },
 
     create: function ()
     {
         //this.socket = io();
         var shipChoices = [
-            'whiteShip',
             'yellowShip',
             'orangeShip',
             'redShip',
@@ -163,22 +162,26 @@ var LoginScene = new Phaser.Class({
             'greenShip'
         ];
 
-        title = this.add.text(320, 50, 'SUBSPACE 2',
-                { font: '48px Righteous', fill: '#ffffff' });
-        loginButtonText = this.add.text(410, 320, 'LOGIN',
+        //title = this.add.text(320, 50, 'SUBSPACE 2',
+                //{ font: '48px Righteous', fill: '#ffffff' });
+        loginButtonText = this.add.text((this.game.renderer.width / 2) - 36, 234, 'LOGIN',
                           { font: '24px Righteous', fill: '#ffffff'});
         loginButtonText.setDepth(2);
-        loginButton = this.add.sprite(320, 300, 'loginButton').setInteractive().setScale(4).setOrigin(0, 0);
-        leftButton = this.add.sprite(320, 200, 'leftButton').setInteractive().setScale(4).setOrigin(0, 0);
-        rightButton = this.add.sprite(512, 200, 'rightButton').setInteractive().setScale(4).setOrigin(0, 0);
-        shipChoice = this.add.sprite(424, 200, shipChoices[0]).setScale(4).setOrigin(0, 0);
+        loginButton = this.add.sprite(this.game.renderer.width / 2, 250, 'loginButton').setInteractive().setScale(4);
+        leftButton = this.add.sprite((this.game.renderer.width / 2) - 100, 100, 'leftButton').setInteractive().setScale(4);
+        rightButton = this.add.sprite((this.game.renderer.width / 2) + 100, 100, 'rightButton').setInteractive().setScale(4);
+        shipChoice = this.add.sprite(this.game.renderer.width / 2, 100, shipChoices[0]).setScale(4);
 
         loginButton.on('pointerdown', function (pointer) {
             pilotname = document.getElementById("pilotname").value;
             shipModel = shipChoices[0];
             //this.socket.emit('login', pilotname);
+            document.getElementById("title").disabled = true;
+            document.getElementById("title").style.display = "none";
             document.getElementById("pilotname").disabled = true;
             document.getElementById("pilotname").style.display = "none";
+            document.getElementById("pilotNameLabel").disabled = true;
+            document.getElementById("pilotNameLabel").style.display = "none";
             this.scene.start('BattleScene');
         }, this);
 
@@ -260,6 +263,7 @@ var BattleScene = new Phaser.Class({
         map = this.make.tilemap({ key: 'map' });
         const tileset = map.addTilesetImage('spaceTiles', 'tiles', 16, 16, 1, 2);
         const spaceLayer = map.createStaticLayer('space', tileset, 0, 0).setScale(2);
+        //spaceLayer = this.add.image(0, 0, 'realSpace').setOrigin(0, 0).setScale(0.5);
         const structureLayer = map.createStaticLayer('structure', tileset, 0, 0).setScale(2);
 
         spaceLayer.scrollFactorX = 0.2;
@@ -639,7 +643,7 @@ var config = {
     width: 960,
     height: 540,
     parent: 'game',
-    pixelArt: true,
+    pixelArt: false,
     physics: {
         default: 'arcade',
         arcade: {

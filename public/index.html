@@ -5,11 +5,14 @@
         <title>Subspace 2</title>
         <link rel="icon" href="favicon.png" type="image/png">
         <script src="js/phaser.js"></script>
-        <link href="https://fonts.googleapis.com/css?family=Righteous|VT323" rel="stylesheet">
+
+
         <style>
 
+        @import url('https://fonts.googleapis.com/css?family=Righteous|VT323');
+
         body {
-            margin: 0;
+            margin: auto;
             overflow: hidden;
             background-color: black;
         }
@@ -25,14 +28,32 @@
             background-color: gray;
             border: none;
             padding: 8px;
-            position: absolute;
             font-family: 'VT323', monospace;
-            font-size: 16px;
+            font-size: 24px;
             width: 15vw;
-            left: 40vw;
-            top: 150px;
-            margin: auto;
-            z-index: 1;
+            display: inline-block;
+        }
+
+
+
+        #title {
+            color: #ffffff;
+            text-align: center;
+            font-family: 'Righteous', cursive;
+            font-size: 5vw;
+        }
+
+        label {
+            color: #ffffff;
+            display: block;
+            text-align: center;
+            font-family: 'Righteous', cursive;
+            font-size: 1.5vw;
+            padding: 1vw;
+        }
+
+        #pilotDataInput {
+            text-align: center;
         }
 
         </style>
@@ -41,7 +62,11 @@
         <script src="/socket.io/socket.io.js"></script>
         <script src="js/game.js"></script>
         <div>
-            <input id="pilotname" type="text">
+            <h1 id="title">SUBSPACE 2</h1>
+            <form id="pilotDataInput">
+                <label for="pilotname" id="pilotNameLabel">Enter Pilot Name:</label>
+                <input id="pilotname" type="text">
+            </form>
         </div>
     </body>
 </html>
