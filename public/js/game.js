@@ -148,6 +148,7 @@ var LoginScene = new Phaser.Class({
         this.load.image('leftButton', 'assets/leftButton.png');
         this.load.image('rightButton', 'assets/rightButton.png');
         this.load.image('realSpace', 'assets/realSpace.png');
+        this.load.spritesheet('shield', 'assets/shield.png', { frameWidth: 20, frameHeight: 20 });
     },
 
     create: function ()
@@ -251,13 +252,15 @@ var BattleScene = new Phaser.Class({
         ship.setMaxVelocity(250);
         ship.setDepth(10);
         ship.lastFired = 0;
-        ship.hp = 5;
+        ship.hp = 200;
         ship.isAlive = true;
         ship.deathTime = 0;
         ship.respawnTime = 5000;
         ship.pilotname = pilotname;
         ship.shipModel = shipModel;
         console.log(ship.pilotname);
+        ship.shield = this.physics.add.sprite(ship.x, ship.y, 'shield').setDepth(15);
+        ship.shield.setAlpha(0);
 
         //create map
         map = this.make.tilemap({ key: 'map' });
@@ -289,11 +292,18 @@ var BattleScene = new Phaser.Class({
             runChildUpdate: true
         });
 
-        healthbar = this.add.sprite(100, 50, 'healthbar').setScale(1);
-        healthbar.scrollFactorX = 0;
-        healthbar.scrollFactorY = 0;
+
+        //healthbar = this.add.sprite(100, 50, 'healthbar').setScale(1);
+        //healthbar.scrollFactorX = 0;
+        //healthbar.scrollFactorY = 0;
 
         //healthbar animations
+
+        energybar = this.add.rectangle(50, 50, 200, 24, 0x61d3e3).setOrigin(0, 0);
+        energybar.setDepth(15);
+        energybar.scrollFactorX = 0;
+        energybar.scrollFactorY = 0;
+        energybar.maxWidth = 200;
 
         this.anims.create({
             key: 'zeroHealth',
@@ -337,7 +347,7 @@ var BattleScene = new Phaser.Class({
             repeat: 0
         });
 
-        healthbar.anims.play('fiveHealth');
+        //healthbar.anims.play('fiveHealth');
 
         //ship animations
 
@@ -358,6 +368,13 @@ var BattleScene = new Phaser.Class({
         this.anims.create({
             key: 'shipEngineFire',
             frames: this.anims.generateFrameNumbers('engineFire', { start: 0, end: 7 }),
+            frameRate: 16,
+            repeat: 0
+        });
+
+        this.anims.create({
+            key: 'shieldHit',
+            frames: this.anims.generateFrameNumbers('shield', { start: 0, end: 3}),
             frameRate: 16,
             repeat: 0
         });
@@ -490,8 +507,16 @@ var BattleScene = new Phaser.Class({
             this.socket.emit('shipHit');
             console.log('Im hit');
             if (ship.hp > 0){
-                ship.hp -= 1;
-                changeHealth(ship);
+                newWidth = energybar.width - (energybar.maxWidth * .2);
+
+                if (newWidth > 0) {
+                    energybar.setSize(newWidth, energybar.height);
+                }
+                else {
+                    energybar.setSize(0, energybar.height);
+                }
+                ship.hp -= energybar.maxWidth * .2;
+                //changeHealth(ship);
                 shipHitSound.play();
             }
 
@@ -524,8 +549,9 @@ var BattleScene = new Phaser.Class({
             this.socket.emit('respawn');
             this.socket.emit('playerMovement', { x: ship.x, y: ship.y, vel: ship.body.velocity, rotation: ship.rotation });
             ship.isAlive = true;
-            ship.hp = 5;
-            changeHealth(ship);
+            ship.hp = 200;
+            //changeHealth(ship);
+            energybar.setSize(energybar.maxWidth, energybar.height);
             ship.setVisible(true);
             ship.setActive(true);
             ship.setPosition(800, 800);
@@ -534,6 +560,13 @@ var BattleScene = new Phaser.Class({
             ship.setRotation(0);
             //ship.anims.play('shipReset');
             ship.setTexture(ship.shipModel);
+        }
+
+        //shield recharge
+        if(energybar.width < energybar.maxWidth && ship.isAlive)
+        {
+            energybar.setSize(energybar.width + (energybar.maxWidth * .0001 * delta), energybar.height);
+            ship.hp = energybar.width;
         }
 
         if (this.cursors.left.isDown) {
@@ -602,13 +635,23 @@ var BattleScene = new Phaser.Class({
         this.otherPlayers.getChildren().forEach(function (otherPlayer) {
             otherPlayer.nameText.x = otherPlayer.x + 10;
             otherPlayer.nameText.y = otherPlayer.y + 10;
+            otherPlayer.shield.setPosition(otherPlayer.x, otherPlayer.y);
         });
+
+        ship.shield.setPosition(ship.x, ship.y);
     },
 
     shipHitCallback: function (ship, laser)
     {
         shipHit = true;
+        ship.shield.setRotation(calcShieldRotation(ship, laser));
+        console.log('shield rotation: ', ship.shield.body.rotation);
         laser.kill();
+        //ship.shield.setPosition(ship.x, ship.y);
+        //ship.shield.setVelocityX(ship.body.velocity.x);
+        //ship.shield.setVelocityY(ship.body.velocity.y);
+        ship.shield.setAlpha(1);
+        ship.shield.anims.play('shieldHit');
 
         if (ship.hp > 0)
         {
@@ -618,8 +661,15 @@ var BattleScene = new Phaser.Class({
 
     enemyHitCallback: function (laser, otherPlayer)
     {
+        otherPlayer.shield.setRotation(calcShieldRotation(otherPlayer, laser));
         laser.kill();
         shipHitSound.play();
+
+        //otherPlayer.shield.setPosition(otherPlayer.x, otherPlayer.y);
+        //otherPlayer.shield.setVelocityX(otherPlayer.body.velocity.x);
+        //otherPlayer.shield.setVelocityY(otherPlayer.body.velocity.y);
+        otherPlayer.shield.setAlpha(1);
+        otherPlayer.shield.anims.play('shieldHit');
     },
 
     structureLayerVsShip: function ()
@@ -680,6 +730,8 @@ function addOtherPlayers (self, playerInfo)
     const otherPlayer = self.physics.add.sprite(playerInfo.x, playerInfo.y, playerInfo.shipModel).setScale(1);
     otherPlayer.setDepth(10);
     otherPlayer.setCircle(8);
+    otherPlayer.shield = self.physics.add.sprite(playerInfo.x, playerInfo.y, 'shield');
+    otherPlayer.shield.setAlpha(0);
 
     otherPlayer.playerId = playerInfo.playerId;
 
@@ -714,5 +766,58 @@ function changeHealth (ship)
     else if (ship.hp === 5)
     {
         healthbar.anims.play('fiveHealth');
+    }
+}
+
+function calcShieldRotation(spaceship, laser)
+{
+    //upper left
+    if (spaceship.x - laser.x > 0 && spaceship.y - laser.y > 0)
+    {
+        //angle = Math.atan(Math.abs(spaceship.y - laser.y) / Math.abs(spaceship.x - laser.x));
+        //return angle + (Math.PI / 2);
+        angle = Math.atan(Math.abs(spaceship.y - laser.y) / Math.abs(spaceship.x - laser.x));
+        return angle + (Math.PI * (3/2));
+    }
+    //upper right
+    else if (spaceship.x - laser.x < 0 && spaceship.y - laser.y > 0)
+    {
+        angle = Math.atan(Math.abs(spaceship.y - laser.y) / Math.abs(spaceship.x - laser.x));
+        return angle;
+    }
+    //lower left
+    else if (spaceship.x - laser.x > 0 && spaceship.y - laser.y < 0)
+    {
+        angle = Math.atan(Math.abs(spaceship.y - laser.y) / Math.abs(spaceship.x - laser.x));
+        return angle + (Math.PI);
+    }
+    //lower right
+    else if (spaceship.x - laser.x < 0 && spaceship.y - laser.y < 0)
+    {
+        //angle = Math.atan(Math.abs(spaceship.y - laser.y) / Math.abs(spaceship.x - laser.x));
+        //return angle + (Math.PI * (3/2));
+
+        angle = Math.atan(Math.abs(spaceship.y - laser.y) / Math.abs(spaceship.x - laser.x));
+        return angle + (Math.PI / 2);
+    }
+    //directly above
+    else if (spaceship.x - laser.x === 0 && spaceship.y - laser.y < 0)
+    {
+        return Math.PI / 2;
+    }
+    //directly below
+    else if (spaceship.x - laser.x === 0 && spaceship.y - laser.y > 0)
+    {
+        return Math.PI * (3/2);
+    }
+    //directly left
+    else if (spaceship.x - laser.x > 0 && spaceship.y - laser.y === 0)
+    {
+        return Math.PI;
+    }
+    //directly right
+    else if (spaceship.x - laser.x < 0 && spaceship.y - laser.y === 0)
+    {
+        return 0;
     }
 }

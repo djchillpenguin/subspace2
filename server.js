@@ -18,7 +18,7 @@ io.on('connection', function (socket) {
         y: 800,
         playerId: socket.id,
         vel: { x: 0, y: 0 },
-        hp: 5,
+        hp: 200,
         pilotname: '',
         shipModel: '',
     };
@@ -56,7 +56,7 @@ io.on('connection', function (socket) {
 
     socket.on('shipHit', function () {
         console.log('ship hit', players[socket.id]);
-        players[socket.id].hp -= 1;
+        //players[socket.id].hp -= 1;
         socket.broadcast.emit('healthUpdate', players[socket.id]);
     });
 
