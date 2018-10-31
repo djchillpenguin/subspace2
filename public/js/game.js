@@ -148,7 +148,7 @@ var LoginScene = new Phaser.Class({
         this.load.image('leftButton', 'assets/leftButton.png');
         this.load.image('rightButton', 'assets/rightButton.png');
         this.load.image('realSpace', 'assets/realSpace.png');
-        this.load.spritesheet('shield', 'assets/shield.png', { frameWidth: 20, frameHeight: 20 });
+        this.load.spritesheet('shield', 'assets/shield.png', { frameWidth: 26, frameHeight: 26 });
     },
 
     create: function ()
@@ -247,7 +247,7 @@ var BattleScene = new Phaser.Class({
 
         //create player ship
         ship = this.physics.add.sprite(800, 800, shipModel);
-        ship.setCircle(8);
+        ship.setCircle(10);
         ship.setScale(1);
         ship.setMaxVelocity(250);
         ship.setDepth(10);
@@ -450,6 +450,7 @@ var BattleScene = new Phaser.Class({
             self.otherPlayers.getChildren().forEach(function (otherPlayer) {
                 if (playerInfo.playerId === otherPlayer.playerId) {
                     otherPlayer.anims.play('shipExplosion');
+                    otherPlayer.body.enable = false;
                     explosionSound.play();
 
                     timedEvent = self.time.addEvent({
@@ -472,6 +473,7 @@ var BattleScene = new Phaser.Class({
                 if (playerInfo.playerId === otherPlayer.playerId) {
                     otherPlayer.setVisible(true);
                     otherPlayer.setActive(true);
+                    otherPlayer.body.enable = true;
                     //otherPlayer.anims.play('shipReset');
                     otherPlayer.setTexture(playerInfo.shipModel);
                 }
@@ -528,6 +530,7 @@ var BattleScene = new Phaser.Class({
             ship.isAlive = false;
             ship.anims.play('shipExplosion');
             explosionSound.play();
+            ship.body.enable = false;
             this.socket.emit('shipDied');
             ship.deathTime = time;
 
@@ -554,6 +557,7 @@ var BattleScene = new Phaser.Class({
             energybar.setSize(energybar.maxWidth, energybar.height);
             ship.setVisible(true);
             ship.setActive(true);
+            ship.body.enable = true;
             ship.setPosition(800, 800);
             ship.setVelocityX(0);
             ship.setVelocityY(0);
@@ -729,7 +733,7 @@ function addOtherPlayers (self, playerInfo)
 {
     const otherPlayer = self.physics.add.sprite(playerInfo.x, playerInfo.y, playerInfo.shipModel).setScale(1);
     otherPlayer.setDepth(10);
-    otherPlayer.setCircle(8);
+    otherPlayer.setCircle(10);
     otherPlayer.shield = self.physics.add.sprite(playerInfo.x, playerInfo.y, 'shield');
     otherPlayer.shield.setAlpha(0);
 
@@ -774,41 +778,36 @@ function calcShieldRotation(spaceship, laser)
     //upper left
     if (spaceship.x - laser.x > 0 && spaceship.y - laser.y > 0)
     {
-        //angle = Math.atan(Math.abs(spaceship.y - laser.y) / Math.abs(spaceship.x - laser.x));
-        //return angle + (Math.PI / 2);
         angle = Math.atan(Math.abs(spaceship.y - laser.y) / Math.abs(spaceship.x - laser.x));
-        return angle + (Math.PI * (3/2));
+        return angle + Math.PI;
     }
     //upper right
     else if (spaceship.x - laser.x < 0 && spaceship.y - laser.y > 0)
     {
         angle = Math.atan(Math.abs(spaceship.y - laser.y) / Math.abs(spaceship.x - laser.x));
-        return angle;
+        return angle + (Math.PI * (3/2));
     }
     //lower left
     else if (spaceship.x - laser.x > 0 && spaceship.y - laser.y < 0)
     {
         angle = Math.atan(Math.abs(spaceship.y - laser.y) / Math.abs(spaceship.x - laser.x));
-        return angle + (Math.PI);
+        return angle + (Math.PI / 2);
     }
     //lower right
     else if (spaceship.x - laser.x < 0 && spaceship.y - laser.y < 0)
     {
-        //angle = Math.atan(Math.abs(spaceship.y - laser.y) / Math.abs(spaceship.x - laser.x));
-        //return angle + (Math.PI * (3/2));
-
         angle = Math.atan(Math.abs(spaceship.y - laser.y) / Math.abs(spaceship.x - laser.x));
-        return angle + (Math.PI / 2);
+        return angle;
     }
     //directly above
     else if (spaceship.x - laser.x === 0 && spaceship.y - laser.y < 0)
     {
-        return Math.PI / 2;
+        return Math.PI * (3/2);
     }
     //directly below
     else if (spaceship.x - laser.x === 0 && spaceship.y - laser.y > 0)
     {
-        return Math.PI * (3/2);
+        return Math.PI / 2;
     }
     //directly left
     else if (spaceship.x - laser.x > 0 && spaceship.y - laser.y === 0)
