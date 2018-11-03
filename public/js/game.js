@@ -134,7 +134,8 @@ var LoginScene = new Phaser.Class({
         this.load.image('redShip', 'assets/ships/redShip.png');
         this.load.image('yellowShip', 'assets/ships/yellowShip.png');
         this.load.image('tiles', 'assets/spaceTiles-extruded.png');
-        this.load.tilemapTiledJSON('map', 'assets/arenaMap.json');
+        //this.load.tilemapTiledJSON('map', 'assets/arenaMap.json');
+        this.load.tilemapTiledJSON('map', 'assets/subspace2Map2.json');
         this.load.image('laserShot', 'assets/laserShot.png');
         this.load.spritesheet('healthbar', 'assets/healthbar.png', { frameWidth: 80, frameHeight: 16 });
         this.load.spritesheet('explosion', 'assets/explosion.png', { frameWidth: 32, frameHeight: 32 });
@@ -265,9 +266,9 @@ var BattleScene = new Phaser.Class({
         //create map
         map = this.make.tilemap({ key: 'map' });
         const tileset = map.addTilesetImage('spaceTiles', 'tiles', 16, 16, 1, 2);
-        const spaceLayer = map.createStaticLayer('space', tileset, 0, 0).setScale(2);
+        const spaceLayer = map.createStaticLayer('space', tileset, 0, 0).setScale(1);
         //spaceLayer = this.add.image(0, 0, 'realSpace').setOrigin(0, 0).setScale(0.5);
-        const structureLayer = map.createStaticLayer('structure', tileset, 0, 0).setScale(2);
+        const structureLayer = map.createStaticLayer('structure', tileset, 0, 0).setScale(1);
 
         spaceLayer.scrollFactorX = 0.2;
         spaceLayer.scrollFactorY = 0.2;
