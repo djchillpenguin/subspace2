@@ -247,8 +247,8 @@ var BattleScene = new Phaser.Class({
         wallBounceSound = this.sound.add('wallBounceSound');
 
         //create player ship
-        ship = this.physics.add.sprite(800, 800, shipModel);
-        ship.setCircle(10);
+        ship = this.physics.add.sprite(800, 800, shipModel).setOffset(1, 1);
+        ship.setCircle(9);
         ship.setScale(1);
         ship.setMaxVelocity(250);
         ship.setDepth(10);
@@ -732,9 +732,9 @@ var game = new Phaser.Game(config);
 
 function addOtherPlayers (self, playerInfo)
 {
-    const otherPlayer = self.physics.add.sprite(playerInfo.x, playerInfo.y, playerInfo.shipModel).setScale(1);
+    const otherPlayer = self.physics.add.sprite(playerInfo.x, playerInfo.y, playerInfo.shipModel).setScale(1).setOffset(1, 1);
     otherPlayer.setDepth(10);
-    otherPlayer.setCircle(10);
+    otherPlayer.setCircle(9);
     otherPlayer.shield = self.physics.add.sprite(playerInfo.x, playerInfo.y, 'shield');
     otherPlayer.shield.setAlpha(0);
 
