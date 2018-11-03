@@ -500,6 +500,8 @@ var BattleScene = new Phaser.Class({
         this.physics.add.collider(lasers, this.otherPlayers, this.enemyHitCallback);
         this.physics.add.collider(ship, enemyLasers, this.shipHitCallback);
         this.physics.add.collider(engineFires, structureLayer, this.structureLayerVsEngineFires);
+        this.physics.add.collider(lasers, structureLayer, this.structureLayerVsLasers);
+        this.physics.add.collider(enemyLasers, structureLayer, this.structureLayerVsLasers);
         ship.setBounce(.75);
     },
 
@@ -688,8 +690,15 @@ var BattleScene = new Phaser.Class({
         {
             engineFire.kill();
         }
-    }
+    },
 
+    structureLayerVsLasers: function (laser, structureLayer)
+    {
+        if (laser)
+        {
+            laser.kill();
+        }
+    }
 });
 
 //game config
