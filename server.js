@@ -21,13 +21,17 @@ io.on('connection', function (socket) {
         hp: 200,
         pilotname: '',
         shipModel: '',
+        kills: 0,
+        deaths: 0
     };
 
     socket.on('login', function(name, model) {
         players[socket.id].pilotname = name;
         players[socket.id].shipModel = model;
-        socket.emit('updateName', players[socket.id]);
         socket.broadcast.emit('newPlayer', players[socket.id]);
+        socket.broadcast.emit('updateName', players[socket.id]);
+        socket.broadcast.emit('updateScoreboard', players);
+        socket.emit('updateScoreboard', players);
     });
 
     socket.emit('currentPlayers', players);
@@ -60,8 +64,12 @@ io.on('connection', function (socket) {
         socket.broadcast.emit('healthUpdate', players[socket.id]);
     });
 
-    socket.on('shipDied', function () {
-        socket.broadcast.emit('shipDeath', players[socket.id]);
+    socket.on('shipDied', function (killerId) {
+        players[socket.id].deaths++;
+        players[killerId].kills++;
+        socket.emit('updateScoreboard', players);
+        socket.broadcast.emit('updateScoreboard', players);
+        socket.broadcast.emit('shipDeath', players[socket.id], players[killerId]);
     });
 
     socket.on('respawn', function () {

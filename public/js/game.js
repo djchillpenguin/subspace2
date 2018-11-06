@@ -3,6 +3,8 @@ let healthbar;
 let shipHit = false;
 let pilotName = {};
 let shipModel = "";
+let lastEnemyToHit = { pilotname: '', playerId: '' };
+let killText;
 
 //custom classes
 var Ship = new Phaser.Class ({
@@ -75,23 +77,27 @@ var Laser = new Phaser.Class ({
         this.lifespan = 2000;
         this.cooldown = 300;
         this.speed = 500;
+        this.shooterName = '';
+        this.shooterId = ''
     },
 
-    shoot: function (ship)
+    shoot: function (tempShip)
     {
+        console.log(tempShip.pilotname);
+        this.shooterName = tempShip.pilotname;
+        this.shooterId = tempShip.playerId;
         this.lifespan = 2000;
         this.setActive(true);
         this.setVisible(true);
         this.setDepth(2);
         this.body.enable = true;
         this.body.setMass(0.01);
-        this.setPosition(ship.x, ship.y);
-        this.setRotation(ship.rotation);
+        this.setPosition(tempShip.x, tempShip.y);
+        this.setRotation(tempShip.rotation);
 
         this.scene.physics.velocityFromRotation(this.rotation, this.speed, this.body.velocity);
         this.setVelocityX(this.body.velocity.x + ship.body.velocity.x);
         this.setVelocityY(this.body.velocity.y + ship.body.velocity.y);
-        console.log('shoot!');
     },
 
     update: function (time, delta)
@@ -259,7 +265,6 @@ var BattleScene = new Phaser.Class({
         ship.respawnTime = 5000;
         ship.pilotname = pilotname;
         ship.shipModel = shipModel;
-        console.log(ship.pilotname);
         ship.shield = this.physics.add.sprite(ship.x, ship.y, 'shield').setDepth(15);
         ship.shield.setAlpha(0);
 
@@ -305,6 +310,13 @@ var BattleScene = new Phaser.Class({
         energybar.scrollFactorX = 0;
         energybar.scrollFactorY = 0;
         energybar.maxWidth = 200;
+
+        ship.nameText = this.add.text(energybar.x, energybar.y - 24, ship.pilotname,
+                    { font: '20px VT323', fill: '#00f900' });
+
+        ship.nameText.setDepth(15);
+        ship.nameText.scrollFactorX = 0;
+        ship.nameText.scrollFactorY = 0;
 
         this.anims.create({
             key: 'zeroHealth',
@@ -380,12 +392,27 @@ var BattleScene = new Phaser.Class({
             repeat: 0
         });
 
+        //scoreboard
+        scoreboardTitleText = this.add.text(832, 16, 'leaderboard', { font: '16px VT323', fill: '#00f900' }).setDepth(15);
+        scoreboardTitleText.scrollFactorX = 0;
+        scoreboardTitleText.scrollFactorY = 0;
+
+        scoreText = this.add.text(832, 16, '\n', { font: '16px VT323', fill: '#00f900' }).setDepth(15);
+        scoreText.scrollFactorX = 0;
+        scoreText.scrollFactorY = 0;
         //network stuff
 
         var self = this;
         this.socket = io();
         this.socket.emit('login', ship.pilotname, ship.shipModel);
         this.otherPlayers = this.physics.add.group();
+
+        this.socket.on('updateScoreboard', function(players) {
+            scoreText.setText('\n');
+            Object.keys(players).forEach(function (id) {
+                scoreText.setText(scoreText.text + players[id].pilotname + '   ' + players[id].kills + '  ' + players[id].deaths + '\n');
+            });
+        });
 
         this.socket.on('currentPlayers', function (players) {
             Object.keys(players).forEach(function (id) {
@@ -398,9 +425,8 @@ var BattleScene = new Phaser.Class({
             });
         });
 
-        this.socket.on('newPlayer', function (playerInfo) {
+        this.socket.on('newPlayer', function (playerInfo, players) {
             addOtherPlayers(self, playerInfo);
-            console.log('new player name: ', playerInfo.pilotname);
         });
 
         this.socket.on('disconnect', function (playerId) {
@@ -414,7 +440,6 @@ var BattleScene = new Phaser.Class({
         this.socket.on('updateName', function (playerInfo) {
             self.otherPlayers.getChildren().forEach(function (otherPlayer) {
                 if (playerInfo.playerId === otherPlayer.playerId) {
-                    otherPlayer.pilotname = playerInfo.pilotname;
                     otherPlayer.setTexture(playerInfo.shipModel);
                 }
             });
@@ -441,18 +466,37 @@ var BattleScene = new Phaser.Class({
                     {
                         enemyLaser.shoot(otherPlayer);
                         laserSound.play();
-                        console.log('enemy shot!');
                     }
                 }
             })
         });
 
-        this.socket.on('shipDeath', function (playerInfo) {
+        this.socket.on('shipDeath', function (playerInfo, killerInfo) {
             self.otherPlayers.getChildren().forEach(function (otherPlayer) {
                 if (playerInfo.playerId === otherPlayer.playerId) {
                     otherPlayer.anims.play('shipExplosion');
                     otherPlayer.body.enable = false;
                     explosionSound.play();
+
+                    if (ship.pilotname === killerInfo.pilotname)
+                    {
+                        killText = self.add.text(this.game.renderer.width / 2, (this.game.renderer.height / 2) + 16, 'you killed ' + playerInfo.pilotname,
+                                    { font: '20px VT323', fill: '#00f900' }).setDepth(15);
+                        console.log(lastEnemyToHit.pilotname, ' killed you');
+                        killText.scrollFactorX = 0;
+                        killText.scrollFactorY = 0;
+                        killText.setVisible(true);
+
+                        timedEventText = self.time.addEvent({
+                            delay: 3000,
+                            callback: hideDeathText,
+                            callbackScope: self
+                        });
+
+                        function hideDeathText (){
+                            killText.setVisible(false);
+                        }
+                    }
 
                     timedEvent = self.time.addEvent({
                         delay: 1000,
@@ -469,7 +513,7 @@ var BattleScene = new Phaser.Class({
         });
 
         this.socket.on('shipAlive', function (playerInfo) {
-            console.log(playerInfo.playerId)
+
             self.otherPlayers.getChildren().forEach(function (otherPlayer) {
                 if (playerInfo.playerId === otherPlayer.playerId) {
                     otherPlayer.setVisible(true);
@@ -481,19 +525,13 @@ var BattleScene = new Phaser.Class({
             });
         });
 
-        /*this.socket.on('healthUpdate', function (playerInfo) {
-            if (playerInfo.playerId === otherPlayer.playerId) {
-                if (playerInfo.playerId === otherPlayer.playerId) {
-
-                }
-                console.log('health update');
-            }
-        });*/
 
         this.cursors = this.input.keyboard.createCursorKeys();
 
         camera = this.cameras.main;
         camera.startFollow(ship);
+
+        //colliders
         this.physics.add.collider(ship, structureLayer, this.structureLayerVsShip);
         this.physics.add.collider(this.otherPlayers, structureLayer, this.structureLayerVsShip);
         this.physics.add.collider(ship, this.otherPlayers);
@@ -510,7 +548,7 @@ var BattleScene = new Phaser.Class({
         if(shipHit)
         {
             this.socket.emit('shipHit');
-            console.log('Im hit');
+
             if (ship.hp > 0){
                 newWidth = energybar.width - (energybar.maxWidth * .2);
 
@@ -534,8 +572,17 @@ var BattleScene = new Phaser.Class({
             ship.anims.play('shipExplosion');
             explosionSound.play();
             ship.body.enable = false;
-            this.socket.emit('shipDied');
+            this.socket.emit('shipDied', lastEnemyToHit.playerId);
             ship.deathTime = time;
+
+            deathText = this.add.text((this.game.renderer.width / 2) , (this.game.renderer.height / 2) + 16, lastEnemyToHit.pilotname + ' killed you',
+                        { font: '20px VT323', fill: '#00f900' }).setDepth(15);
+            console.log(lastEnemyToHit.pilotname, ' killed you');
+            deathText.scrollFactorX = 0;
+            deathText.scrollFactorY = 0;
+            deathText.setVisible(true);
+
+            console.log(lastEnemyToHit.pilotname, ' killed you');
 
             timedEvent = this.time.addEvent({
                 delay: 1000,
@@ -547,11 +594,21 @@ var BattleScene = new Phaser.Class({
                 ship.setVisible(false);
                 ship.setActive(false);
             }
+
+            timedEventText = this.time.addEvent({
+                delay: 3000,
+                callback: hideDeathText,
+                callbackScope: this
+            });
+
+            function hideDeathText (){
+                deathText.setVisible(false);
+            }
+
         }
 
         if (time > (ship.deathTime + ship.respawnTime) && ship.isAlive === false)
         {
-            console.log('respawn');
             this.socket.emit('respawn');
             this.socket.emit('playerMovement', { x: ship.x, y: ship.y, vel: ship.body.velocity, rotation: ship.rotation });
             ship.isAlive = true;
@@ -651,12 +708,13 @@ var BattleScene = new Phaser.Class({
     shipHitCallback: function (ship, laser)
     {
         shipHit = true;
+        lastEnemyToHit.pilotname = laser.shooterName;
+        lastEnemyToHit.playerId = laser.shooterId;
         ship.shield.setRotation(calcShieldRotation(ship, laser));
-        console.log('shield rotation: ', ship.shield.body.rotation);
+
         laser.kill();
-        //ship.shield.setPosition(ship.x, ship.y);
-        //ship.shield.setVelocityX(ship.body.velocity.x);
-        //ship.shield.setVelocityY(ship.body.velocity.y);
+        //console.log(lastEnemyToHit);
+
         ship.shield.setAlpha(1);
         ship.shield.anims.play('shieldHit');
 
@@ -672,9 +730,6 @@ var BattleScene = new Phaser.Class({
         laser.kill();
         shipHitSound.play();
 
-        //otherPlayer.shield.setPosition(otherPlayer.x, otherPlayer.y);
-        //otherPlayer.shield.setVelocityX(otherPlayer.body.velocity.x);
-        //otherPlayer.shield.setVelocityY(otherPlayer.body.velocity.y);
         otherPlayer.shield.setAlpha(1);
         otherPlayer.shield.anims.play('shieldHit');
     },
@@ -748,6 +803,7 @@ function addOtherPlayers (self, playerInfo)
     otherPlayer.shield.setAlpha(0);
 
     otherPlayer.playerId = playerInfo.playerId;
+    otherPlayer.pilotname = playerInfo.pilotname;
 
     otherPlayer.nameText = self.add.text(playerInfo.x + 8, playerInfo.y + 8, playerInfo.pilotname,
                 { font: '10px VT323', fill: '#00f900' });
