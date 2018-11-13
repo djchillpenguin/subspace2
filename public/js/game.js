@@ -432,6 +432,7 @@ var BattleScene = new Phaser.Class({
         this.socket.on('disconnect', function (playerId) {
             self.otherPlayers.getChildren().forEach(function (otherPlayer) {
                 if (playerId === otherPlayer.playerId) {
+                    otherPlayer.nameText.destroy();
                     otherPlayer.destroy();
                 }
             });
