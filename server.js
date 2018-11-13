@@ -43,6 +43,9 @@ io.on('connection', function (socket) {
 
         delete players[socket.id];
 
+        socket.broadcast.emit('updateScoreboard', players);
+        socket.emit('updateScoreboard', players);
+
         io.emit('disconnect', socket.id);
     });
 
