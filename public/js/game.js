@@ -5,6 +5,7 @@ let pilotName = {};
 let shipModel = "";
 let lastEnemyToHit = { pilotname: '', playerId: '' };
 let killText;
+let lastEngineFireSound = 0;
 
 //custom classes
 var Ship = new Phaser.Class ({
@@ -247,10 +248,17 @@ var BattleScene = new Phaser.Class({
     {
         //create sounds
         laserSound = this.sound.add('laser');
+        //laserSound.volume = 0.75;
         engine = this.sound.add('engine');
+        //engine.detune = -1200;
+        //engine.rate = 1.1;
+        //engine.volume = 0.75;
         shipHitSound = this.sound.add('shipHit');
+        //shipHitSound.volume = 0.75;
         explosionSound = this.sound.add('explosion');
+        //explosionSound.volume = 0.75;
         wallBounceSound = this.sound.add('wallBounceSound');
+        //wallBounceSound.volume = 0.75;
 
         //create player ship
         ship = this.physics.add.sprite(800, 800, shipModel).setOffset(1, 1);
@@ -628,11 +636,11 @@ var BattleScene = new Phaser.Class({
         }
 
         //shield recharge
-        if(energybar.width < energybar.maxWidth && ship.isAlive)
+        /*if(energybar.width < energybar.maxWidth && ship.isAlive)
         {
             energybar.setSize(energybar.width + (energybar.maxWidth * .0001 * delta), energybar.height);
             ship.hp = energybar.width;
-        }
+        }*/
 
         if (this.cursors.left.isDown) {
             ship.setAngularVelocity(-300);
@@ -657,6 +665,7 @@ var BattleScene = new Phaser.Class({
         }
         else if (this.cursors.down.isDown) {
             this.physics.velocityFromRotation(ship.rotation, -200, ship.body.acceleration);
+
             engine.play();
             engineFire = engineFires.get();
 
@@ -669,6 +678,12 @@ var BattleScene = new Phaser.Class({
         }
         else {
             ship.setAcceleration(0);
+            //recharge only if engines not firing
+            if(energybar.width < energybar.maxWidth && ship.isAlive)
+            {
+                energybar.setSize(energybar.width + (energybar.maxWidth * .0001 * delta), energybar.height);
+                ship.hp = energybar.width;
+            }
         }
 
         if (this.cursors.space.isDown && time > ship.lastFired) {
